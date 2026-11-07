@@ -1,5 +1,6 @@
 // @ts-nocheck — port of the original backend endpoints onto Lovable Cloud tables.
 import * as engine from "./engine.server";
+import { convertAffiliate } from "./affiliate.server";
 
 export class HttpError extends Error {
   status: number;
@@ -31,7 +32,7 @@ const DEFAULT_SETTINGS = {
   auto_post: true, supercoin_enabled: true, gold_enabled: true, giftcard_enabled: true, giftcard_min: 5,
   product_enabled: true, product_min: 70, loot_enabled: true, keywords: [],
   convert_enabled: true, sankmo_api_url: "", sankmo_token: "", convert_mode: "sankmo_api",
-  earnkaro_token: "", affiliate_routes: {},
+  earnkaro_token: "", affiliate_routes: {}, telegram_converter_token: "", telegram_converter_username: "", telegram_converter_url: "", telegram_converter_connected: false,
   check_interval_minutes: 5, check_interval_seconds: 300, post_style: "simple", max_posts_per_update: 20,
   website_max_age_hours: 24, telegram_max_age_minutes: 60, last_run_at: null,
   copy_header: "🪙 100% SuperCoin Deals 🪙", copy_link_style: "direct", sankmo_stores: engine.SANKMO_DEFAULT, split_multi: true,
@@ -539,8 +540,15 @@ export async function addDeal(body: any) {
 
 export async function repost(id: string, destinationId?: string | null) {
   const db = await getDb();
-  const deal = await check(await db.from("deals").select("*").eq("id", id).maybeSingle());
+  let deal = await check(await db.from("deals").select("*").eq("id", id).maybeSingle());
   if (!deal) throw new HttpError(404, "Deal not found");
+  if (!deal.converted || deal.affiliate_url === deal.clean_url) {
+    const result = await convertAffiliate(deal.clean_url || deal.url, await getSettings());
+    if (result.changed) {
+      deal = { ...deal, affiliate_url: result.converted, converted: true };
+      await db.from("deals").update({ affiliate_url: result.converted, converted: true }).eq("id", id);
+    }
+  }
   return { post_results: await postDeal(deal, destinationId) };
 }
 
@@ -658,8 +666,8 @@ export async function sendRecent(id: string) {
 }
 
 export function adminSettingsView(s: any) {
-  const { sankmo_token, earnkaro_token, amazon_tag, tg_session, tg_api_hash, ...rest } = s;
-  return { ...rest, sankmo_token_masked: mask(sankmo_token || ""), earnkaro_token_masked: mask(earnkaro_token || ""), tg_connected: false, tg_api_hash_masked: "" };
+  const { sankmo_token, earnkaro_token, telegram_converter_token, amazon_tag, tg_session, tg_api_hash, ...rest } = s;
+  return { ...rest, sankmo_token_masked: mask(sankmo_token || ""), earnkaro_token_masked: mask(earnkaro_token || ""), telegram_converter_token_masked: mask(telegram_converter_token || ""), tg_connected: false, tg_api_hash_masked: "" };
 }
 
 export async function readSettings() {
@@ -670,6 +678,13 @@ export async function writeSettings(body: any) {
   const upd: any = Object.fromEntries(Object.entries(body || {}).filter(([k, v]) => v !== null && v !== undefined && k in DEFAULT_SETTINGS));
   if (upd.sankmo_token === "") delete upd.sankmo_token;
   if (upd.earnkaro_token === "") delete upd.earnkaro_token;
+  for (const k of ["telegram_converter_username", "telegram_converter_url", "telegram_converter_connected"]) delete upd[k];
+  if (upd.telegram_converter_token === "") delete upd.telegram_converter_token;
+  if ("telegram_converter_token" in upd) {
+    upd.telegram_converter_token = String(upd.telegram_converter_token).trim();
+    if (!/^\d{5,20}:[A-Za-z0-9_-]{20,100}$/.test(upd.telegram_converter_token)) throw new HttpError(400, "Enter the full bot token from BotFather");
+    Object.assign(upd, { telegram_converter_connected: false, telegram_converter_username: "" });
+  }
   const clamp = (k, lo, hi) => { if (k in upd) upd[k] = Math.min(Math.max(Number(upd[k]), lo), hi); };
   clamp("check_interval_minutes", 5, 1440);
   clamp("check_interval_seconds", 300, 86400);
@@ -681,14 +696,7 @@ export async function writeSettings(body: any) {
 }
 
 export async function convertOne(url: string) {
-  const settings = await getSettings();
-  const cleaned = await engine.cleanLink(String(url || "").trim());
-  try {
-    const out = await engine.convertLink(cleaned, settings);
-    return { original: url, cleaned, converted: out, changed: out !== cleaned, error: null, store: engine.detectStore(cleaned) };
-  } catch (e) {
-    return { original: url, cleaned, converted: cleaned, changed: false, error: String(e?.message || e).slice(0, 300), store: engine.detectStore(cleaned) };
-  }
+  return convertAffiliate(String(url || "").trim(), await getSettings());
 }
 
 function applyPostPrice(info: any, context: string) {

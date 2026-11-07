@@ -118,7 +118,7 @@ export async function receiveConverter(request: Request, body: unknown) {
       // Do not label a failed conversion as an earning link or modify the channel post on failure.
       if (result.items.some((i) => i.error)) {
         if (msg.chat.type !== "channel") await telegramCall(token, "sendMessage", { chat_id: msg.chat.id, text: `Conversion failed: ${result.items.filter((i) => i.error).map((i) => i.error).join("; ").slice(0, 3500)}` });
-        else throw new Error("Affiliate conversion failed; original channel post kept");
+        else console.error("Telegram channel conversion failed; original post kept", result.items.filter((i) => i.error).map((i) => i.error));
       } else if (msg.chat.type === "channel") {
         if (result.message !== text || result.entities.some((e, i) => e.url !== (msg.entities || msg.caption_entities || [])[i]?.url)) {
           await telegramCall(token, msg.text !== undefined ? "editMessageText" : "editMessageCaption", { chat_id: msg.chat.id, message_id: msg.message_id,
