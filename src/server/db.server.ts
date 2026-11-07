@@ -13,12 +13,12 @@ let clientPromise: Promise<any> | null = null;
 
 export async function mongo() {
   if (!clientPromise) {
-    const uri = process.env["MONGODB_URI"];
-    if (!uri) throw new Error("MONGODB_URI is not set");
+    const uri = process.env["MONGO_URL"] || process.env["MONGODB_URI"];
+    if (!uri) throw new Error("MONGO_URL is not set");
     clientPromise = (async () => {
       const client = new MongoClient(uri, { serverSelectionTimeoutMS: 10000 });
       await client.connect();
-      const db = client.db(process.env["MONGODB_DB"] || undefined);
+      const db = client.db(process.env["DB_NAME"] || process.env["MONGODB_DB"] || undefined);
       await Promise.all([
         db.collection("seen").createIndex({ key: 1 }, { unique: true }),
         db.collection("deals").createIndex({ id: 1 }, { unique: true }),

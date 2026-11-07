@@ -1,0 +1,38 @@
+services:
+  # Website + API (one Node service)
+  - type: web
+    name: dealloot
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev && NITRO_PRESET=node-server npm run build
+    startCommand: node .output/server/index.mjs
+    healthCheckPath: /api/public/stats
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: dealloot
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+
+  # Deal scan every 15 minutes
+  - type: cron
+    name: dealloot-scan
+    runtime: node
+    schedule: "*/15 * * * *"
+    buildCommand: "true"
+    startCommand: node scripts/trigger-scan.mjs
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: dealloot
+          envVarKey: CRON_SECRET
