@@ -13,3 +13,4 @@
 - [ ] Finish admin CRUD, affiliate, and posting verification after the user creates the first account and supplies service credentials.
 - [x] Move data to the existing MongoDB, replace sign-in with one admin password, and add Render web service + 15-minute cron job.
 - [ ] Deploy on Render (user: create Blueprint, set MONGO_URL, ADMIN_PASSWORD, APP_URL).
+- [ ] Confirm shared fallback for posting and converting; add protected Telegram text/link conversion and affiliate setup controls.
