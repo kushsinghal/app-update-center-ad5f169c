@@ -10,8 +10,8 @@ export class HttpError extends Error {
 }
 
 async function getDb() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin as any;
+  const { db } = await import("./db.server");
+  return db as any;
 }
 
 const now = () => new Date().toISOString();
@@ -44,14 +44,13 @@ async function check(res: any) {
 
 export async function getSettings() {
   const db = await getDb();
-  const row = await check(await db.from("app_settings").select("data").eq("id", "main").maybeSingle());
-  return { ...DEFAULT_SETTINGS, ...(row?.data || {}) };
+  const row = await check(await db.from("settings").select("*").eq("id", "main").maybeSingle());
+  return { ...DEFAULT_SETTINGS, ...(row || {}) };
 }
 
 async function updateSettings(patch: any) {
   const db = await getDb();
-  const cur = await check(await db.from("app_settings").select("data").eq("id", "main").maybeSingle());
-  await check(await db.from("app_settings").upsert({ id: "main", data: { ...(cur?.data || {}), ...patch }, updated_at: now() }));
+  await check(await db.from("settings").upsert({ ...patch, id: "main", updated_at: now() }));
 }
 
 async function safeConvert(url: string, settings: any) {
@@ -254,7 +253,7 @@ async function ingest(parsed: any, source: any, settings: any, autopost: boolean
   try { await enrich(deal.id); } catch (e) { console.warn("enrich failed", e?.message); }
   const fresh = (rawPosted || source.id === "manual") && ageMinutes(postedAt) <= settings.telegram_max_age_minutes;
   if (autopost && fresh && settings.auto_post) {
-    const allowedPost = runId ? (await db.rpc("take_post_budget", { _run_id: runId })).data === true : true;
+    const allowedPost = runId ? await takePostBudget(runId) : true;
     if (allowedPost) {
       const fullDeal = (await check(await db.from("deals").select("*").eq("id", deal.id).maybeSingle())) || deal;
       await postDeal(fullDeal);
@@ -317,23 +316,36 @@ export async function fetchSource(src: any, runId?: string | null) {
   return { fetched: items.length, new_deals: added, error: null };
 }
 
-/** Starts a scan of every enabled source; each source runs as its own background request. */
-export async function startFetchAll(baseUrl: string) {
-  const db = await getDb();
-  const settings = await getSettings();
-  await updateSettings({ last_run_at: now() });
-  const run = await check(await db.from("fetch_runs").insert({ posts_left: Number(settings.max_posts_per_update) || 20 }).select("run_id").single());
-  await db.from("fetch_runs").delete().lt("created_at", ago(86400e3));
-  await db.from("seen").delete().lt("at", ago(14 * 86400e3));
-  const n = await check(await db.rpc("dispatch_source_fetches", { _base_url: baseUrl, _run_id: run.run_id }));
-  return { queued: true, sources: n };
+async function takePostBudget(runId: string) {
+  const { mongo } = await import("./db.server");
+  const r = await (await mongo()).collection("cron_runs").findOneAndUpdate({ run_id: runId, posts_left: { $gt: 0 } }, { $inc: { posts_left: -1 } });
+  return !!(r?.value ?? r);
 }
 
-export async function verifyInternalKey(key: string | null) {
-  if (!key) return false;
+let scanRunning = false;
+
+/** Starts a scan of every enabled source in the background (a few sources at a time). */
+export async function startFetchAll(_baseUrl?: string) {
   const db = await getDb();
-  const row = await check(await db.from("app_internal").select("internal_key").eq("id", "main").maybeSingle());
-  return !!row && row.internal_key === key;
+  const settings = await getSettings();
+  if (scanRunning) return { queued: false, running: true, sources: 0 };
+  await updateSettings({ last_run_at: now() });
+  const run = { run_id: uuid(), posts_left: Number(settings.max_posts_per_update) || 20, created_at: now() };
+  await check(await db.from("fetch_runs").insert(run));
+  await db.from("fetch_runs").delete().lt("created_at", ago(86400e3));
+  await db.from("seen").delete().lt("at", ago(14 * 86400e3));
+  const sources = await check(await db.from("sources").select("*").eq("enabled", true).limit(500));
+  scanRunning = true;
+  (async () => {
+    const queue = [...sources];
+    const worker = async () => {
+      for (let src = queue.shift(); src; src = queue.shift()) {
+        try { await fetchSource(src, run.run_id); } catch (e) { console.warn("source scan failed", src.id, e?.message); }
+      }
+    };
+    await Promise.all(Array.from({ length: 4 }, worker));
+  })().finally(() => { scanRunning = false; });
+  return { queued: true, sources: sources.length };
 }
 
 export async function fetchSourceById(sourceId: string, runId?: string | null) {

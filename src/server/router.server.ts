@@ -14,25 +14,10 @@ function publicOrigin(url: URL) {
 }
 
 async function requireAdmin(request: Request) {
+  const { verifyAdminToken } = await import("./auth.server");
   const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) throw new HttpError(401, "Please sign in as the admin");
-  const { createClient } = await import("@supabase/supabase-js");
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
-  const sb = createClient(process.env["SUPABASE_URL"], key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      fetch: (input, init) => {
-        const h = new Headers(init?.headers);
-        h.set("apikey", key);
-        h.set("Authorization", `Bearer ${token}`);
-        return fetch(input, { ...init, headers: h });
-      },
-    },
-  });
-  const { data: u, error } = await sb.auth.getUser(token);
-  if (error || !u?.user) throw new HttpError(401, "Your session expired — sign in again");
-  const { data: isAdmin } = await sb.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
-  if (!isAdmin) throw new HttpError(403, "This account is not an admin");
+  if (!verifyAdminToken(token)) throw new HttpError(401, "Your session expired — sign in again");
 }
 
 export async function handle(request: Request, splat: string) {
@@ -64,14 +49,15 @@ export async function handle(request: Request, splat: string) {
       if (a === "public-settings") return json(await core.publicSettingsView());
     }
     if (method === "POST" && a === "cron" && b === "fetch") {
-      const { authenticateCronRequest } = await import("@/integrations/supabase/cron-auth");
-      const fail = await authenticateCronRequest(request);
-      if (fail) return fail;
+      const { verifyCronRequest } = await import("./auth.server");
+      if (!verifyCronRequest(request)) return json({ detail: "Unauthorized" }, 401);
       return json(await core.startFetchAll(publicOrigin(url)));
     }
-    if (method === "POST" && a === "internal" && b === "fetch-source") {
-      if (!(await core.verifyInternalKey(request.headers.get("x-internal-key")))) return json({ detail: "Unauthorized" }, 401);
-      return json(await core.fetchSourceById(String(body.source_id), body.run_id || null));
+    if (method === "POST" && a === "auth" && b === "login") {
+      const { login } = await import("./auth.server");
+      const token = login(String(body.password || ""));
+      if (!token) return json({ detail: "Wrong password" }, 401);
+      return json({ token });
     }
 
     // ----- admin -----
