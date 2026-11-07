@@ -24,9 +24,9 @@ describe("deal list filters translate to MongoDB", () => {
 
 describe("admin password", () => {
   beforeEach(() => {
-    process.env.ADMIN_PASSWORD = "secret-pass";
-    process.env.SESSION_SECRET = "x".repeat(40);
-    process.env.CRON_SECRET = "cron-123";
+    process.env["ADMIN_PASSWORD"] = "secret-pass";
+    process.env["SESSION_SECRET"] = "x".repeat(40);
+    process.env["CRON_SECRET"] = "cron-123";
   });
   it("wrong password gives no token", () => {
     expect(login("nope")).toBeNull();
