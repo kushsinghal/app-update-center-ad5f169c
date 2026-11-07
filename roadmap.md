@@ -11,3 +11,5 @@
 - [x] Use the uploaded EarnKaro API instructions for token-based conversion, make Amazon use EarnKaro, and verify manual deal conversion follows the same store routing.
 - [x] Assess WealthyDimes' public SuperCoin tracker and recommend practical ways to improve deal quality and price verification.
 - [ ] Finish admin CRUD, affiliate, and posting verification after the user creates the first account and supplies service credentials.
+- [x] Move data to the existing MongoDB, replace sign-in with one admin password, and add Render web service + 15-minute cron job.
+- [ ] Deploy on Render (user: create Blueprint, set MONGO_URL, ADMIN_PASSWORD, APP_URL).
