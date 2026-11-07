@@ -1,23 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import DealsPage from "@/views/DealsPage";
 
-// The home route ships no og:image, so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "DealLoot — Fresh loot deals, found for you" },
+      { name: "description", content: "Live 100% SuperCoin, gift card, price-drop, loot and gold deals from India's top deal channels, updated every few minutes." },
+      { property: "og:title", content: "DealLoot — Fresh loot deals, found for you" },
+      { property: "og:description", content: "Live SuperCoin, gift card, price-drop and loot deals, updated every few minutes." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: DealsPage,
 });
-
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}

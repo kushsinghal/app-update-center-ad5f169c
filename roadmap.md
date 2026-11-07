@@ -1,0 +1,13 @@
+# Roadmap
+- [x] Inspect and port the GitHub app into the TanStack project.
+- [x] Create Cloud schema for deals, sources, channels, settings, history, and admin roles.
+- [x] Finish client API endpoints and route metadata; confirm root page and admin view work.
+- [x] Add a configurable EarnKaro fallback and per-store affiliate provider choices (requires EarnKaro endpoint/key).
+- [x] Improve RSS feed extraction to find product links embedded in descriptions.
+- [x] Show the source on each deal in Control Room's deal list.
+- [x] Merge the public Loot/Errors and Price Drop filters into one combined category.
+- [x] Confirm unauthenticated admin data requests are rejected; a signed-in admin test is blocked until the first account is created.
+- [x] Create the active 15-minute scheduled scan; it still needs configured sources and a live admin setup to verify successful ingestion.
+- [x] Use the uploaded EarnKaro API instructions for token-based conversion, make Amazon use EarnKaro, and verify manual deal conversion follows the same store routing.
+- [x] Assess WealthyDimes' public SuperCoin tracker and recommend practical ways to improve deal quality and price verification.
+- [ ] Finish admin CRUD, affiliate, and posting verification after the user creates the first account and supplies service credentials.
