@@ -34,7 +34,7 @@ describe("Telegram affiliate conversion", () => {
     const text = `  🎁 Deal ₹399!\n${url},\nAgain ${url}.  `;
     const result = await convertAffiliateText(text, { sankmo_token: "configured", earnkaro_token: "configured" });
     expect(result.message).toBe("  🎁 Deal ₹399!\nhttps://ekaro.in/mine,\nAgain https://ekaro.in/mine.  ");
-    expect(result.items[0].cleaned).toBe("https://www.flipkart.com/item/p/itm123");
+    expect(result.items[0]?.cleaned).toBe("https://www.flipkart.com/item/p/itm123");
     expect(fetch).toHaveBeenCalledTimes(2);
   });
   it("routes Amazon directly to EarnKaro and keeps hidden link text and bold entity offsets", async () => {
@@ -50,8 +50,8 @@ describe("Telegram affiliate conversion", () => {
     mockProviders();
     const url = "https://www.amazon.in/dp/B000000001";
     const result = await convertAffiliateText(`${url} 🎉 End`, { earnkaro_token: "configured" }, [{ type: "url", offset: 0, length: url.length }, { type: "bold", offset: url.length + 4, length: 3 }]);
-    expect(result.entities[0].length).toBe("https://ekaro.in/mine".length);
-    expect(result.entities[1].offset).toBe("https://ekaro.in/mine".length + 4);
+    expect(result.entities[0]?.length).toBe("https://ekaro.in/mine".length);
+    expect(result.entities[1]?.offset).toBe("https://ekaro.in/mine".length + 4);
   });
   it("never exposes bot tokens in settings", () => {
     const view = adminSettingsView({ telegram_converter_token: token });

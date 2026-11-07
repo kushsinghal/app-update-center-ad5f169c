@@ -10,7 +10,7 @@ export async function convertAffiliate(original: string, settings: any) {
   }
 }
 
-type Entity = { type: string; offset: number; length: number; url?: string; [key: string]: unknown };
+type Entity = { type: string; offset: number; length: number; url?: string | undefined; [key: string]: unknown };
 
 /** Telegram offsets and JavaScript slices both use UTF-16 code units. */
 export async function convertAffiliateText(text: string, settings: any, entities: Entity[] = []) {

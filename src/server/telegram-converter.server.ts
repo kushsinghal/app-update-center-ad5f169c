@@ -24,7 +24,7 @@ export function pairingCode(token: string) {
 }
 export function validPairing(code: string, token: string) {
   const match = code.match(/^(\d{13})_([a-f0-9]{64})$/);
-  return !!match && Number(match[1]) > Date.now() && equal(match[2], sign(`telegram-pair:${token}:${match[1]}`));
+  return !!match?.[1] && !!match?.[2] && Number(match[1]) > Date.now() && equal(match[2], sign(`telegram-pair:${token}:${match[1]}`));
 }
 
 export async function telegramCall(token: string, method: string, body: Record<string, unknown>) {
@@ -90,7 +90,7 @@ export async function receiveConverter(request: Request, body: unknown) {
   const chats = db.collection("telegram_converter_chats");
   const chatKey = `${bot}:${msg.chat.id}`;
   const pair = text.match(/^\/(?:start|connect)(?:@\w+)?\s+(\S+)$/);
-  if (pair && validPairing(pair[1], token)) {
+  if (pair?.[1] && validPairing(pair[1], token)) {
     await chats.updateOne({ _id: chatKey }, { $set: { bot, chat_id: String(msg.chat.id), type: msg.chat.type } }, { upsert: true });
     await telegramCall(token, "sendMessage", { chat_id: msg.chat.id, text: "Connected. Send your links or deal text here." });
     return Response.json({ ok: true });
