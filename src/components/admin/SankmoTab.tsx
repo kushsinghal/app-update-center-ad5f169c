@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Panel, fieldCls, primaryBtn, ghostBtn } from "./Panel";
+import { TelegramConverterPanel } from "./TelegramConverterPanel";
 
 const Tester = () => {
   const [url, setUrl] = useState("");
@@ -123,6 +124,7 @@ export const SankmoTab = () => {
       </Panel>
       <Tester />
       <StoresPanel s={s} setS={setS} />
+      <TelegramConverterPanel settings={s} reload={load} />
       <Button data-testid="sankmo-reconvert-button" className={`${ghostBtn} lg:col-span-2`}
         onClick={async () => { await api.post("/deals/reconvert"); toast.success("Converting the last 24h of deals with your current affiliate settings in the background"); }}>
         Reconvert recent deals with current store settings
