@@ -89,6 +89,8 @@ const ResultCard = ({ it, i, onImage }) => {
           </span>
         </div>
         {it.title && <p className="line-clamp-1 text-sm font-semibold">{it.title}</p>}
+        {it.deal_id && <p data-testid={`bulk-saved-${i}`} className="text-xs text-muted-foreground">Saved to deals</p>}
+        {it.save_error && <p role="alert" className="text-xs text-destructive">Could not save to deals: {it.save_error}</p>}
         {(it.offers || []).length > 0 && <p data-testid={`bulk-offers-${i}`} className="text-xs text-slate-600">{it.offers.map((offer) => offer.label).join(" · ")}</p>}
         <p className="break-all font-mono text-[11px] text-slate-400 line-through">{it.original}</p>
         <p data-testid={`bulk-converted-${i}`} className="break-all font-mono text-xs text-slate-800">{it.converted}</p>

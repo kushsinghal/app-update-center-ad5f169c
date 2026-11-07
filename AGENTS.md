@@ -36,3 +36,4 @@ use the editor.
 - Scheduled scans come from a separate Render Cron Job calling `POST /api/public/cron/fetch` with `CRON_SECRET`; scans run sources in-process in the background.
 - Telegram converter uses the existing server-side bot-token settings on Render, a signed webhook secret, expiring admin-issued chat pairing, and MongoDB update claims; only paired chats can spend affiliate credentials and retries are deduplicated.
 - Shared affiliate conversion keeps provider routing in the engine; Telegram preserves UTF-16 message entities while replacing URLs, and reposts retry previously unconverted deals.
+- Control Room bulk conversions persist successful earning URLs as deals without reconverting or auto-posting, updating matching cleaned URLs instead of adding repeat rows.
