@@ -98,6 +98,7 @@ export async function handle(request: Request, splat: string) {
     return json({ detail: `Not found: ${route}` }, 404);
   } catch (e) {
     if (e instanceof HttpError) return json({ detail: e.message }, e.status);
+    if (/is not set$/.test(String(e?.message))) return json({ detail: "The site isn't connected to its database yet" }, 503);
     console.error("API error", route, e);
     return json({ detail: String(e?.message || "Server error").slice(0, 300) }, 500);
   }
