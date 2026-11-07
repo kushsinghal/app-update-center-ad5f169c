@@ -43,7 +43,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
   useEffect(() => {
     // A page file can go missing briefly after an app update; reload once to fetch the new version.
-    if (/dynamically imported module|Importing a module script failed/i.test(String(error?.message))) {
+    if (/dynamically imported module|Importing a module script failed/i.test(String((error as Error | undefined)?.message))) {
       const key = "dealloot-chunk-reload";
       if (!sessionStorage.getItem(key)) {
         sessionStorage.setItem(key, "1");
