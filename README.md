@@ -17,3 +17,12 @@ Manual setup instead of Blueprint:
 
 ## Local
 Copy `.env.example` to `.env`, fill it in, then `npm install && npm run dev`.
+
+## Telegram link converter
+1. Create a dedicated bot with Telegram's **@BotFather**. In **Control Room → Affiliate Setup**, enter its token under **Telegram link converter** and click **Connect bot**. On Render, the site address is detected automatically; you can also enter your HTTPS Render address. Use a dedicated bot: Telegram allows only one webhook per bot, so connecting replaces its previous receiver.
+2. Copy the displayed `/connect …` command (valid for 15 minutes) and send it in your direct bot chat. Only chats paired with this command can convert links. Do not share the command publicly. **Check connection** creates a fresh command and lists paired chats.
+3. Send links or a complete message. The bot replies with the same text, spacing and Telegram text formatting, with URLs cleaned and converted using the store settings. Hidden clickable links are converted too. Sankmo routes fall back to EarnKaro; Amazon uses EarnKaro directly. Conversion must be enabled and the relevant affiliate tokens saved.
+4. For a channel, add the bot as an administrator with **Edit messages** permission, then post the connection command in that channel. The bot edits subsequent link posts in place, preserving the text and photo captions. Delete the connection command afterward. Bots cannot read other bots' messages. Edited incoming posts are not processed, to avoid conversion loops. Use a private channel for pairing; all posts in a paired channel are trusted.
+5. If conversion fails, direct chats get an error instead of a misleading earning link; channel posts stay unchanged. **Check connection** shows Telegram delivery errors. A Telegram Bot API length limit may reject a message after URLs expand; send shorter messages in that case.
+
+Live Telegram delivery requires a reachable HTTPS site and a bot token. Render is the production destination; this preview is temporary. No extra Telegram API ID or personal-account session is needed.

@@ -36,6 +36,10 @@ export async function handle(request: Request, splat: string) {
   const route = `${method} ${parts.length ? parts.map((p, i) => (i > 0 && /^[0-9a-f-]{8,}$/i.test(p) && !["d"].includes(p) ? ":id" : p)).join("/") : ""}`;
 
   try {
+    if (method === "POST" && a === "telegram" && b === "converter" && !c) {
+      const { receiveConverter } = await import("./telegram-converter.server");
+      return await receiveConverter(request, body);
+    }
     // ----- scheduled + internal -----
     // ----- public -----
     if (method === "GET") {
@@ -62,6 +66,16 @@ export async function handle(request: Request, splat: string) {
 
     // ----- admin -----
     await requireAdmin(request);
+    if (method === "POST" && a === "telegram" && b === "converter") {
+      const telegram = await import("./telegram-converter.server");
+      if (c === "connect") {
+        const origin = typeof body.origin === "string" && body.origin ? body.origin : publicOrigin(url);
+        if (origin.length > 2048) throw new HttpError(400, "Site address is too long");
+        return json(await telegram.connectConverter(origin));
+      }
+      if (c === "status") return json(await telegram.converterStatus());
+      if (c === "disconnect") return json(await telegram.disconnectConverter());
+    }
     if (method === "GET") {
       if (a === "lookup") return json(await core.lookup(qp("url") || ""));
       if (a === "sources") return json(await core.listSources());
