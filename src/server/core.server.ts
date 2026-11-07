@@ -709,6 +709,30 @@ function applyPostPrice(info: any, context: string) {
   if (info.mrp && info.mrp <= price * 1.03) info.mrp = null;
 }
 
+async function saveConvertedDeal(clean: string, affiliate: string, info: any, context: string, settings: any) {
+  const db = await getDb();
+  const existing = (await check(await db.from("deals").select("*").eq("clean_url", clean).order("posted_at", { ascending: false }).limit(1)))[0];
+  const price = info.price ?? existing?.price ?? null, mrp = info.mrp ?? existing?.mrp ?? null;
+  const discount = engine.extractDiscount(context, price, mrp) || 0;
+  const categories = engine.classify(context, discount, settings);
+  const title = engine.cleanTitle(info.title || context) || existing?.title || engine.makeTitle(clean);
+  const timestamp = now();
+  const row = { title, text: context, note: context || null, url: clean, clean_url: clean,
+    affiliate_url: affiliate, converted: true, store: engine.detectStore(clean), price, mrp, discount,
+    text_price: price, text_mrp: mrp, store_price: info.store_price ?? null,
+    categories: categories.length ? categories : existing?.categories?.length ? existing.categories : ["heavy_discount"],
+    image: info.image || existing?.image || null, offers: info.offers || [], posted_at: timestamp,
+    title_key: titleKey(title), product_key: engine.productKey(clean) };
+  if (existing) {
+    await check(await db.from("deals").update({ ...row, score: engine.score(row) }).eq("id", existing.id));
+    return existing.id;
+  }
+  const deal = { ...row, id: uuid(), dedupe_key: `convert:${clean}`, source: "Convert Links", source_id: "manual",
+    created_at: timestamp, posted_to: [], featured: false, score: engine.score(row) };
+  await check(await db.from("deals").insert(deal));
+  return deal.id;
+}
+
 export async function convertBulk(body: any) {
   const text = String(body.text || "");
   const found = [...new Set(engine.findUrls(text).map((u) => u.replace(/[.,;!]+$/, "")).filter((u) => !u.includes("t.me/")))];
@@ -747,7 +771,12 @@ export async function convertBulk(body: any) {
     swaps.push([orig, out]);
     const code = uuid().replace(/-/g, "").slice(0, 8);
     await db.from("links").insert({ code, url: out, store, title: info.title, image: info.image, price: info.price, mrp: info.mrp, store_price: info.store_price ?? null, offers: info.offers || [] });
-    items.push({ original: orig, cleaned: clean, converted: out, changed: out !== clean, error: err, store, share_code: code, ...info });
+    let dealId = null, saveError = null;
+    if (!err && out !== clean) {
+      try { dealId = await saveConvertedDeal(clean, out, info, linkContext(text, orig), settings); }
+      catch (e) { saveError = String(e?.message || e).slice(0, 300); }
+    }
+    items.push({ original: orig, cleaned: clean, converted: out, changed: out !== clean, error: err, store, share_code: code, ...info, deal_id: dealId, save_error: saveError });
   }
   const map = Object.fromEntries(swaps);
   const pattern = new RegExp([...swaps].sort((a, b) => b[0].length - a[0].length).map(([o]) => o.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
