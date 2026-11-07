@@ -10,6 +10,12 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  vite: {
+    resolve: {
+      // The MongoDB driver's URL parser requires "punycode/" (the npm package, not the Node built-in).
+      alias: [{ find: /^punycode\/$/, replacement: "punycode/punycode.js" }],
+    },
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
