@@ -13,7 +13,7 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 // The MongoDB driver's URL parser requires "punycode/" (the npm package, not the Node built-in).
 const punycode = fileURLToPath(new URL("./node_modules/punycode/punycode.js", import.meta.url));
 
-const nitroOptions: { preset?: string } = Object.assign({}, { alias: { "punycode/": punycode } });
+const nitroOptions = { alias: { "punycode/": punycode } } as unknown as { preset?: string };
 
 export default defineConfig({
   vite: {
