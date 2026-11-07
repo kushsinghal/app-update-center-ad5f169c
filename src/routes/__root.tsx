@@ -42,6 +42,16 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
+    // A page file can go missing briefly after an app update; reload once to fetch the new version.
+    if (/dynamically imported module|Importing a module script failed/i.test(String((error as Error | undefined)?.message))) {
+      const key = "dealloot-chunk-reload";
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "1");
+        window.location.reload();
+        return;
+      }
+    }
+    sessionStorage.removeItem("dealloot-chunk-reload");
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
