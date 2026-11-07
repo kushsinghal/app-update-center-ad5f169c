@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Save successfully converted Control Room links as deals and explain Telegram setup controls.
+- [x] Save successfully converted Control Room links as deals and explain Telegram setup controls (automated tests pass; live saving remains untested).
 - [x] Inspect and port the GitHub app into the TanStack project.
 - [x] Create Cloud schema for deals, sources, channels, settings, history, and admin roles.
 - [x] Finish client API endpoints and route metadata; confirm root page and admin view work.

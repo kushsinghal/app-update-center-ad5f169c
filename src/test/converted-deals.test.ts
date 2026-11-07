@@ -20,10 +20,10 @@ vi.mock("@/server/db.server", () => ({ db: { from: (table: string) => {
       if (table === "deals" && op !== "select") {
         if (state.saveFail) return Promise.resolve({ data: null, error: { message: "Storage unavailable" } }).then(resolve);
         if (op === "insert") state.deals.push(patch);
-        else Object.assign(state.deals.find((d) => d.id === filters.id) || {}, patch);
+        else Object.assign(state.deals.find((d) => d.id === filters["id"]) || {}, patch);
       }
-      const data = table === "deals" && op === "select" && filters.clean_url
-        ? state.deals.filter((d) => d.clean_url === filters.clean_url) : [];
+      const data = table === "deals" && op === "select" && filters["clean_url"]
+        ? state.deals.filter((d) => d.clean_url === filters["clean_url"]) : [];
       return Promise.resolve({ data, error: null }).then(resolve);
     },
   }; return q;
