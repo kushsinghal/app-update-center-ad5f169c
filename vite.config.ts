@@ -20,7 +20,8 @@ export default defineConfig({
       alias: [{ find: /^punycode\/$/, replacement: punycode }],
     },
   },
-  nitro: { alias: { "punycode/": punycode } },
+  // `alias` is forwarded to nitro as-is; the wrapper's type lists only a subset of nitro options.
+  nitro: { alias: { "punycode/": punycode } } as { preset?: string },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
