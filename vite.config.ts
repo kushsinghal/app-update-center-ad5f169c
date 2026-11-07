@@ -13,6 +13,8 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 // The MongoDB driver's URL parser requires "punycode/" (the npm package, not the Node built-in).
 const punycode = fileURLToPath(new URL("./node_modules/punycode/punycode.js", import.meta.url));
 
+const nitroOptions: { preset?: string } = Object.assign({}, { alias: { "punycode/": punycode } });
+
 export default defineConfig({
   vite: {
     resolve: {
@@ -21,7 +23,7 @@ export default defineConfig({
     },
   },
   // `alias` is forwarded to nitro as-is; the wrapper's type lists only a subset of nitro options.
-  nitro: { alias: { "punycode/": punycode } } as { preset?: string },
+  nitro: nitroOptions,
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
