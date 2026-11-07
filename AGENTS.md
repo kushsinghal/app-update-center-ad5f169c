@@ -28,3 +28,9 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Architecture
+- Data lives in MongoDB (`MONGO_URL`, `DB_NAME`), reached only from server code via `src/server/db.server.ts`; its chainable query API keeps engine queries readable and collection names match the original app's existing data.
+- Admin access is a single password (`ADMIN_PASSWORD`) exchanged for an HMAC-signed Bearer token (`SESSION_SECRET`); there are no user accounts.
+- Production target is a Node server on Render (`NITRO_PRESET=node-server`, see `render.yaml`); the MongoDB driver needs Node sockets, so Lovable's edge publishing is not the deploy path.
+- Scheduled scans come from a separate Render Cron Job calling `POST /api/public/cron/fetch` with `CRON_SECRET`; scans run sources in-process in the background.
