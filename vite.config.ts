@@ -7,15 +7,20 @@
 // the build fails. Never add compression (compressPublicAssets, vite-plugin-compression):
 // hosting already compresses at the edge.
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+
+// The MongoDB driver's URL parser requires "punycode/" (the npm package, not the Node built-in).
+const punycode = fileURLToPath(new URL("./node_modules/punycode/punycode.js", import.meta.url));
 
 export default defineConfig({
   vite: {
     resolve: {
       // The MongoDB driver's URL parser requires "punycode/" (the npm package, not the Node built-in).
-      alias: [{ find: /^punycode\/$/, replacement: "punycode/punycode.js" }],
+      alias: [{ find: /^punycode\/$/, replacement: punycode }],
     },
   },
+  nitro: { alias: { "punycode/": punycode } },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
