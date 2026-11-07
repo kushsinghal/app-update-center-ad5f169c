@@ -10,7 +10,8 @@
 - [x] Create the active 15-minute scheduled scan; it still needs configured sources and a live admin setup to verify successful ingestion.
 - [x] Use the uploaded EarnKaro API instructions for token-based conversion, make Amazon use EarnKaro, and verify manual deal conversion follows the same store routing.
 - [x] Assess WealthyDimes' public SuperCoin tracker and recommend practical ways to improve deal quality and price verification.
-- [ ] Finish admin CRUD, affiliate, and posting verification after the user creates the first account and supplies service credentials.
+- [ ] Finish live affiliate and posting verification (requires service credentials and a destination for test posts; single-password admin access is verified).
 - [x] Move data to the existing MongoDB, replace sign-in with one admin password, and add Render web service + 15-minute cron job.
 - [ ] Deploy on Render (user: create Blueprint, set MONGO_URL, ADMIN_PASSWORD, APP_URL).
-- [ ] Confirm shared fallback for posting and converting; add protected Telegram text/link conversion and affiliate setup controls.
+- [x] Confirm shared fallback for new deals and converting; retry unconverted reposts; add protected Telegram text/link conversion and affiliate setup controls.
+- [ ] Verify real Telegram delivery (user: save a dedicated bot token, connect on a reachable HTTPS site, and pair a chat).
