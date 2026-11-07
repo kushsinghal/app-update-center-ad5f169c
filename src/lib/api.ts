@@ -1,4 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
+export const TOKEN_KEY = "dealloot-admin-token";
+export const getToken = () => (typeof window === "undefined" ? null : window.localStorage.getItem(TOKEN_KEY));
 
 type Res<T = any> = { data: T };
 
@@ -10,8 +11,7 @@ async function request<T = any>(method: string, path: string, body?: unknown, op
   const url = `/api/public${p}${qs || (inlineQs ? `?${inlineQs}` : "")}`;
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+  const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const r = await fetch(url, { method, headers, body: body !== undefined ? JSON.stringify(body) : null });
   const text = await r.text();
@@ -20,6 +20,10 @@ async function request<T = any>(method: string, path: string, body?: unknown, op
     json = text ? JSON.parse(text) : null;
   } catch {
     json = { detail: text };
+  }
+  if (r.status === 401 && token && typeof window !== "undefined") {
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.dispatchEvent(new Event("dealloot-auth"));
   }
   if (!r.ok) {
     const err: any = new Error(json?.detail || `Request failed (${r.status})`);
