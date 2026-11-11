@@ -32,6 +32,7 @@ export function verifyAdminToken(token: string): boolean {
 export function verifyCronRequest(request: Request): boolean {
   const expected = process.env["CRON_SECRET"];
   if (!expected) return false;
-  const given = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "") || request.headers.get("x-cron-secret") || "";
+  const url = new URL(request.url);
+  const given = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "") || request.headers.get("x-cron-secret") || url.searchParams.get("key") || "";
   return !!given && same(given, expected);
 }

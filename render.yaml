@@ -21,18 +21,5 @@ services:
       - key: CRON_SECRET
         generateValue: true
 
-  # Deal scan every 15 minutes
-  - type: cron
-    name: dealloot-scan
-    runtime: node
-    schedule: "*/15 * * * *"
-    buildCommand: "true"
-    startCommand: node scripts/trigger-scan.mjs
-    envVars:
-      - key: APP_URL
-        sync: false
-      - key: CRON_SECRET
-        fromService:
-          type: web
-          name: dealloot
-          envVarKey: CRON_SECRET
+  # Use an external scheduler to wake the free web service without a paid Render cron job.
+  # Call GET /api/public/cron/fetch?key=<CRON_SECRET> every 15 minutes.

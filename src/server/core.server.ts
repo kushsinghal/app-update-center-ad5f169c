@@ -35,7 +35,7 @@ const DEFAULT_SETTINGS = {
   earnkaro_token: "", affiliate_routes: {}, telegram_converter_token: "", telegram_converter_username: "", telegram_converter_url: "", telegram_converter_connected: false,
   check_interval_minutes: 5, check_interval_seconds: 300, post_style: "simple", max_posts_per_update: 20,
   website_max_age_hours: 24, telegram_max_age_minutes: 60, last_run_at: null,
-  copy_header: "🪙 100% SuperCoin Deals 🪙", copy_link_style: "direct", sankmo_stores: engine.SANKMO_DEFAULT, split_multi: true,
+  copy_header: "🪙 100% SuperCoin Deals 🪙", copy_link_style: "direct", converter_label_style: "store", sankmo_stores: engine.SANKMO_DEFAULT, split_multi: true,
 };
 
 async function check(res: any) {
@@ -294,30 +294,42 @@ export async function fetchSource(src: any, runId?: string | null) {
   try {
     items = src.kind === "telegram" ? await engine.fetchTelegram(src.value) : src.kind === "web" ? await engine.fetchWeb(src.value) : await engine.fetchRss(src.value);
   } catch (e) {
-    const err = String(e?.message || e).slice(0, 200);
+    const err = String(e?.message || e).slice(0, 300);
     await db.from("sources").update({ last_error: err, last_fetched_at: now() }).eq("id", src.id);
     return { fetched: 0, new_deals: 0, error: err };
   }
-  // Skip posts already handled, in one query
+  if (!Array.isArray(items)) {
+    const err = "Source returned an invalid response";
+    await db.from("sources").update({ last_error: err, last_fetched_at: now() }).eq("id", src.id);
+    return { fetched: 0, new_deals: 0, error: err };
+  }
   const keys = items.map((it) => `${src.id}:${it.ext_id}`);
   const seenRows = keys.length ? await check(await db.from("seen").select("key").in("key", keys)) : [];
   const seenSet = new Set(seenRows.map((r) => r.key));
   let added = 0;
+  const itemErrors: string[] = [];
   for (const it of items) {
-    const parsed: any = engine.parseItem(it.text, it.links, it.image, settings);
-    if (!parsed || !parsed.categories.length) continue;
-    parsed.ext_id = it.ext_id;
-    parsed.posted_at = it.posted_at;
-    parsed.source_post_url = it.post_url;
-    if (it.title) parsed.title = it.title.slice(0, 140);
-    const parts = splitPost(parsed, it.text, it.links, settings);
-    for (const part of parts) {
-      if (parts.length === 1 && seenSet.has(`${src.id}:${part.ext_id}`)) continue;
-      if (await ingest(part, src, settings, true, runId)) added++;
+    try {
+      const parsed: any = engine.parseItem(it.text, it.links, it.image, settings);
+      if (!parsed || !parsed.categories.length) continue;
+      parsed.ext_id = it.ext_id;
+      parsed.posted_at = it.posted_at;
+      parsed.source_post_url = it.post_url;
+      if (it.title) parsed.title = it.title.slice(0, 140);
+      const parts = splitPost(parsed, it.text, it.links, settings);
+      for (const part of parts) {
+        if (parts.length === 1 && seenSet.has(`${src.id}:${part.ext_id}`)) continue;
+        if (await ingest(part, src, settings, true, runId)) added++;
+      }
+    } catch (e) {
+      const message = String(e?.message || e).slice(0, 220);
+      itemErrors.push(message);
+      console.warn("deal processing failed", src.id, message);
     }
   }
-  await db.from("sources").update({ last_fetched_at: now(), last_error: null, total_deals: (src.total_deals || 0) + added }).eq("id", src.id);
-  return { fetched: items.length, new_deals: added, error: null };
+  const error = itemErrors.length ? `${itemErrors.length} deal${itemErrors.length === 1 ? "" : "s"} failed: ${itemErrors[0]}` : null;
+  await db.from("sources").update({ last_fetched_at: now(), last_error: error, total_deals: (src.total_deals || 0) + added }).eq("id", src.id);
+  return { fetched: items.length, new_deals: added, error };
 }
 
 async function takePostBudget(runId: string) {
@@ -328,8 +340,8 @@ async function takePostBudget(runId: string) {
 
 let scanRunning = false;
 
-/** Starts a scan of every enabled source in the background (a few sources at a time). */
-export async function startFetchAll(_baseUrl?: string) {
+/** Starts a scan of every enabled source. External wake requests wait for completion. */
+export async function startFetchAll(_baseUrl?: string, options: { wait?: boolean } = {}) {
   const db = await getDb();
   const settings = await getSettings();
   if (scanRunning) return { queued: false, running: true, sources: 0 };
@@ -340,16 +352,31 @@ export async function startFetchAll(_baseUrl?: string) {
   await db.from("seen").delete().lt("at", ago(14 * 86400e3));
   const sources = await check(await db.from("sources").select("*").eq("enabled", true).limit(500));
   scanRunning = true;
-  (async () => {
+  const task = (async () => {
     const queue = [...sources];
+    const errors: any[] = [];
+    let fetched = 0;
+    let newDeals = 0;
     const worker = async () => {
       for (let src = queue.shift(); src; src = queue.shift()) {
-        try { await fetchSource(src, run.run_id); } catch (e) { console.warn("source scan failed", src.id, e?.message); }
+        try {
+          const result = await fetchSource(src, run.run_id);
+          fetched += result.fetched || 0;
+          newDeals += result.new_deals || 0;
+          if (result.error) errors.push({ source: src.name, error: result.error });
+        } catch (e) {
+          const error = String(e?.message || e).slice(0, 300);
+          errors.push({ source: src.name, error });
+          console.warn("source scan failed", src.id, error);
+          await db.from("sources").update({ last_error: error, last_fetched_at: now() }).eq("id", src.id);
+        }
       }
     };
-    await Promise.all(Array.from({ length: 4 }, worker));
+    await Promise.all(Array.from({ length: Math.min(4, Math.max(1, sources.length)) }, worker));
+    return { fetched, new_deals: newDeals, errors };
   })().finally(() => { scanRunning = false; });
-  return { queued: true, sources: sources.length };
+  if (!options.wait) return { queued: true, sources: sources.length };
+  return { queued: true, sources: sources.length, ...(await task) };
 }
 
 export async function fetchSourceById(sourceId: string, runId?: string | null) {
@@ -683,6 +710,7 @@ export async function writeSettings(body: any) {
   if (upd.earnkaro_token === "") delete upd.earnkaro_token;
   for (const k of ["telegram_converter_username", "telegram_converter_url", "telegram_converter_connected"]) delete upd[k];
   if (upd.telegram_converter_token === "") delete upd.telegram_converter_token;
+  if ("converter_label_style" in upd && !(["store", "link"] as string[]).includes(upd.converter_label_style)) throw new HttpError(400, "Label style must be store or link");
   if ("telegram_converter_token" in upd) {
     upd.telegram_converter_token = String(upd.telegram_converter_token).trim();
     if (!/^\d{5,20}:[A-Za-z0-9_-]{20,100}$/.test(upd.telegram_converter_token)) throw new HttpError(400, "Enter the full bot token from BotFather");

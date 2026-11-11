@@ -43,6 +43,11 @@ export async function handle(request: Request, splat: string) {
     // ----- scheduled + internal -----
     // ----- public -----
     if (method === "GET") {
+      if (a === "cron" && b === "fetch") {
+        const { verifyCronRequest } = await import("./auth.server");
+        if (!verifyCronRequest(request)) return json({ detail: "Unauthorized" }, 401);
+        return json(await core.startFetchAll(publicOrigin(url), { wait: true }));
+      }
       if (a === "deals" && !b) return json(await core.listDeals({ category: qp("category"), q: qp("q"), store: qp("store"), sort: qp("sort"), limit: qp("limit") }));
       if (a === "deals" && b && c === "original") return json(await core.originalPost(b));
       if (a === "price-history" && b) return json(await core.priceHistory(b));
@@ -55,7 +60,7 @@ export async function handle(request: Request, splat: string) {
     if (method === "POST" && a === "cron" && b === "fetch") {
       const { verifyCronRequest } = await import("./auth.server");
       if (!verifyCronRequest(request)) return json({ detail: "Unauthorized" }, 401);
-      return json(await core.startFetchAll(publicOrigin(url)));
+      return json(await core.startFetchAll(publicOrigin(url), { wait: true }));
     }
     if (method === "POST" && a === "auth" && b === "login") {
       const { login } = await import("./auth.server");
@@ -89,7 +94,7 @@ export async function handle(request: Request, splat: string) {
       if (a === "deals" && b && c === "post") return json(await core.repost(b, qp("destination_id")));
       if (a === "sources" && !b) return json(await core.addSource(body));
       if (a === "sources" && b && c === "fetch") return json(await core.fetchSourceById(b));
-      if (a === "fetch-all") return json(await core.startFetchAll(publicOrigin(url)));
+      if (a === "fetch-all") return json(await core.startFetchAll(publicOrigin(url), { wait: false }));
       if (a === "destinations" && !b) return json(await core.addDestination(body));
       if (a === "destinations" && b && c === "test") return json(await core.testDestination(b));
       if (a === "destinations" && b && c === "send-recent") return json(await core.sendRecent(b));

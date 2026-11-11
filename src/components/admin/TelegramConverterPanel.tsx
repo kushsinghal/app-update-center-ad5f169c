@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Send, RefreshCw, Unplug, Bot, CheckCircle2, CircleDashed } from "lucide-react";
 import { toast } from "sonner";
 import { api, errMsg } from "@/lib/api";
@@ -14,6 +14,11 @@ export function TelegramConverterPanel({ settings, reload }: { settings: any; re
   const saved = !!settings.telegram_converter_token_masked;
   const connected = status ? !!status.connected : !!settings.telegram_converter_connected;
   const username = settings.telegram_converter_username;
+  const labelStyle = settings.converter_label_style || "store";
+  useEffect(() => { if (saved) run("status"); }, []);
+  async function setLabelStyle(style: "store" | "link") {
+    try { await api.put("/settings", { converter_label_style: style }); reload(); } catch (error) { toast.error(errMsg(error)); }
+  }
   async function run(action: "connect" | "status" | "disconnect") {
     setBusy(true);
     try {
@@ -66,11 +71,18 @@ export function TelegramConverterPanel({ settings, reload }: { settings: any; re
       {status?.chats && <p className="text-sm text-slate-600">Connected chats: {status.chats.length ? status.chats.map((c: any) => `${c.type} ${c.chat_id}`).join(", ") : "None"}</p>}
       {status?.error && <p role="alert" className="text-sm text-destructive">{status.error}</p>}
       <div className="space-y-2 border-t border-slate-200 pt-4">
+        <Label>Bot reply style</Label>
+        <div className="inline-flex rounded-full border border-slate-300 p-0.5 text-xs font-semibold" role="group" aria-label="Bot reply style">
+          {([["store", "Store name"], ["link", "Link text"]] as const).map(([value, text]) => (
+            <button key={value} type="button" data-testid={`converter-label-${value}`} aria-pressed={labelStyle === value} onClick={() => setLabelStyle(value)}
+              className={`rounded-full px-3 py-1 transition-colors ${labelStyle === value ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-200"}`}>{text}</button>
+          ))}
+        </div>
         <Label>Preview</Label>
         <p data-testid="telegram-converter-preview" className="rounded-xl bg-[#F5F2EA] p-3 text-sm text-slate-800">
-          Deal price ₹399 at <a href="https://www.flipkart.com/" className="font-semibold text-sky-700 underline" onClick={(e) => e.preventDefault()}>@Flipkart</a>
+          Deal price ₹399 at <a href="https://www.flipkart.com/" className="font-semibold text-sky-700 underline" onClick={(e) => e.preventDefault()}>{labelStyle === "link" ? "https://fkrt.cc/your-link" : "@Flipkart"}</a>
         </p>
-        <p className="text-xs text-slate-500">Store names become clickable links to your affiliate page. Your links are never shown as raw text.</p>
+        <p className="text-xs text-slate-500">{labelStyle === "link" ? "The converted link is shown as the clickable text." : "Store names become clickable links to your affiliate page."} Your links are never shown as raw text.</p>
       </div>
     </section>
   );

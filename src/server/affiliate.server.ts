@@ -49,7 +49,7 @@ export async function convertAffiliateText(text: string, settings: any, entities
   for (const span of spans) {
     message += text.slice(cursor, span.start);
     const item = byUrl.get(span.url)!;
-    const shown = item.error ? span.url : linkLabel(item.store);
+    const shown = item.error ? span.url : settings?.converter_label_style === "link" ? item.converted : linkLabel(item.store);
     const newStart = message.length;
     message += shown;
     replacements.push({ start: span.start, end: span.end, newStart, newEnd: message.length });

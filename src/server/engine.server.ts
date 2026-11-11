@@ -273,8 +273,17 @@ export function parseItem(text: string, links: string[], image: string | null, r
 }
 
 async function fetchText(url: string, init: any = {}, timeoutMs = 20000) {
-  const r = await fetch(url, { ...init, headers: { ...UA, ...(init.headers || {}) }, signal: AbortSignal.timeout(timeoutMs) });
-  return r;
+  let lastError: any;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await fetch(url, { ...init, redirect: init.redirect || "follow", headers: { ...UA, ...(init.headers || {}) }, signal: AbortSignal.timeout(timeoutMs) });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  const host = (() => { try { return new URL(url).hostname; } catch { return url; } })();
+  const reason = lastError?.cause?.code || lastError?.message || "network error";
+  throw new Error(`Could not fetch ${host}: ${reason}`);
 }
 
 function strippedStrings(el: any): string[] {

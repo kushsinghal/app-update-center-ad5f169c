@@ -42,7 +42,9 @@ describe("admin password", () => {
   it("scheduled scan needs the cron secret", () => {
     const ok = new Request("http://x/api/public/cron/fetch", { method: "POST", headers: { Authorization: "Bearer cron-123" } });
     const bad = new Request("http://x/api/public/cron/fetch", { method: "POST", headers: { Authorization: "Bearer other" } });
+    const external = new Request("http://x/api/public/cron/fetch?key=cron-123", { method: "GET" });
     expect(verifyCronRequest(ok)).toBe(true);
+    expect(verifyCronRequest(external)).toBe(true);
     expect(verifyCronRequest(bad)).toBe(false);
   });
 });
